@@ -9,7 +9,7 @@ no version roulette.
 Paste into Win+R (fits the 259-char limit):
 
 ```
-powershell -c "$SubUrl='https://HOST/PATH/TOKEN'; irm https://raw.githubusercontent.com/OWNER/singbox-win/v1/bootstrap.ps1|iex"
+powershell -c "$SubUrl='https://HOST/PATH/TOKEN'; irm https://raw.githubusercontent.com/fvrrrn/singbox-win/v1/bootstrap.ps1|iex"
 ```
 
 The script self-elevates (TUN needs administrator), creates `Desktop\vpn`, downloads
@@ -44,10 +44,10 @@ history on every version bump.
 Both files come from that one upstream zip; `libcronet.dll` is not a custom build.
 `sing-box.exe` embeds the wintun driver, so there is nothing else to ship.
 
-If upstream is unreachable, the script falls back to the same asset re-uploaded to this
-repo's release for the pinned tag. The mirror faces the same hash check — a mirror that
-cannot match the pin is not trusted either. Upload it once per tag; installs work
-without it as long as upstream is up.
+There is deliberately **no mirror**. A second source could only ever serve bytes that
+pass the same hash check, so it would add somewhere else to keep in sync without adding
+any trust. If SagerNet is unreachable the install stops, which is the honest outcome —
+it does not fall back to something less pinned.
 
 Re-running the installer skips the download when `sing-box.sha256` already matches the
 pin, so a config refresh costs a few KB rather than 55 MB.
@@ -62,9 +62,9 @@ release:
 2. If sing-box is being bumped: set `$SbVersion`, download the new asset, and paste its
    real SHA256 into `$SbSha256`. Never copy a hash you have not computed yourself.
 3. Commit, `git tag v2`, push the tag.
-4. Create the GitHub release for `v2` and attach `sing-box-<ver>-windows-amd64.zip` as
-   the mirror asset.
-5. Hand out the one-liner with `/v2/` in the URL.
+4. Hand out the one-liner with `/v2/` in the URL.
+
+No release assets to upload: the binaries come from upstream at install time.
 
 Never point the one-liner at a branch or at `latest` — that reintroduces exactly the
 auto-update failure this bundle exists to avoid.

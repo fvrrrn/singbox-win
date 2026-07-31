@@ -106,9 +106,10 @@ Remove-Item $zip, $staging -Recurse -Force
 Write-Ok "Extracted to $InstallDir"
 
 # ---- Step 3: sing-box binaries -----------------------------
-# Upstream first, this repo's release as a mirror if upstream is unreachable.
-# The mirror is the same bytes re-uploaded, and it faces the same hash check:
-# a mirror that cannot match the pinned hash is not trusted either.
+# SagerNet's release is the only source, on purpose. A mirror could only ever
+# serve bytes that pass the same hash check, so it would add somewhere else to
+# keep in sync without adding any trust. If upstream is down, the install stops
+# rather than falling back to something less pinned.
 $Exe   = Join-Path $InstallDir 'sing-box.exe'
 $Dll   = Join-Path $InstallDir 'libcronet.dll'
 $Stamp = Join-Path $InstallDir 'sing-box.sha256'
@@ -121,34 +122,25 @@ if ($havePinned) {
     Write-Ok 'Already present and pinned - skipping download'
 } else {
     Write-Step "Fetching sing-box $SbVersion..."
+    $sbUrl = "https://github.com/SagerNet/sing-box/releases/download/v$SbVersion/$SbAsset"
     $sbZip = Join-Path $env:TEMP $SbAsset
-    $verified = $false
-    foreach ($u in @(
-        "https://github.com/SagerNet/sing-box/releases/download/v$SbVersion/$SbAsset"
-        "https://github.com/$RepoOwner/$RepoName/releases/download/$RepoTag/$SbAsset"
-    )) {
-        try {
-            Write-Host "      $u" -ForegroundColor DarkGray
-            $ProgressPreference = 'SilentlyContinue'
-            Invoke-WebRequest $u -OutFile $sbZip -UseBasicParsing
-            $ProgressPreference = 'Continue'
-        } catch {
-            Write-Warn "unreachable: $($_.Exception.Message)"
-            continue
-        }
-        $got = (Get-FileHash $sbZip -Algorithm SHA256).Hash
-        if ($got -ne $SbSha256) {
-            Write-Fail "SHA256 mismatch - rejected"
-            Write-Host "      expected $SbSha256" -ForegroundColor Red
-            Write-Host "      got      $got"      -ForegroundColor Red
-            Remove-Item $sbZip -Force -ErrorAction SilentlyContinue
-            continue
-        }
-        $verified = $true
-        break
+    Write-Host "      $sbUrl" -ForegroundColor DarkGray
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest $sbUrl -OutFile $sbZip -UseBasicParsing
+    } catch {
+        throw "Could not download $SbAsset from SagerNet: $($_.Exception.Message)"
+    } finally {
+        $ProgressPreference = 'Continue'
     }
-    if (-not $verified) {
-        throw "No verified copy of $SbAsset could be obtained from upstream or the mirror"
+
+    $got = (Get-FileHash $sbZip -Algorithm SHA256).Hash
+    if ($got -ne $SbSha256) {
+        Remove-Item $sbZip -Force -ErrorAction SilentlyContinue
+        Write-Fail 'SHA256 mismatch - refusing to install'
+        Write-Host "      expected $SbSha256" -ForegroundColor Red
+        Write-Host "      got      $got"      -ForegroundColor Red
+        throw "$SbAsset does not match the pinned hash"
     }
     Write-Ok 'SHA256 verified'
 
