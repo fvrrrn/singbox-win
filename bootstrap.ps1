@@ -3,7 +3,7 @@
 #  sing-box VPN - one-line installer
 #
 #  Usage (Win+R):
-#    powershell -c "$SubUrl='https://host/sub/TOKEN'; irm https://gist.githubusercontent.com/USER/ID/raw/SHA/bootstrap.ps1 | iex"
+#    powershell -c "$SubUrl='https://host/sub/TOKEN'; irm https://raw.githubusercontent.com/fvrrrn/singbox-win/main/bootstrap.ps1|iex"
 #
 #  Re-running without $SubUrl refreshes the config from the saved subscription.
 # ============================================================
@@ -13,7 +13,10 @@ $ErrorActionPreference = 'Stop'
 # ---- Deployment settings -----------------------------------
 $RepoOwner  = 'fvrrrn'
 $RepoName   = 'singbox-win'
-$RepoTag    = 'v1'                    # PINNED. Never 'latest'.
+# main is the single source of truth: no tags, no releases. Whatever is on main
+# when a user runs this is what they get, including on a config refresh. Land
+# changes on main only when they are ready to ship.
+$RepoBranch = 'main'
 $InstallDir = Join-Path ([Environment]::GetFolderPath('Desktop')) 'vpn'
 $TaskName   = 'singbox-vpn'
 
@@ -79,10 +82,10 @@ if (-not $SubUrl) {
 }
 
 # ---- Step 2: download the bundle ---------------------------
-Write-Step "Downloading bundle ($RepoTag)..."
+Write-Step "Downloading bundle ($RepoBranch)..."
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-$zip     = Join-Path $env:TEMP "$RepoName-$RepoTag.zip"
-$zipUrl  = "https://github.com/$RepoOwner/$RepoName/archive/refs/tags/$RepoTag.zip"
+$zip     = Join-Path $env:TEMP "$RepoName-$RepoBranch.zip"
+$zipUrl  = "https://github.com/$RepoOwner/$RepoName/archive/refs/heads/$RepoBranch.zip"
 $staging = Join-Path $env:TEMP "$RepoName-staging"
 
 $ProgressPreference = 'SilentlyContinue'
@@ -164,7 +167,7 @@ if ($havePinned) {
 Write-Step 'Building configuration...'
 $maker = Join-Path $InstallDir 'make-config.ps1'
 if (-not (Test-Path $maker)) {
-    throw "make-config.ps1 missing from bundle - `$RepoTag '$RepoTag' predates it, bump the tag"
+    throw "make-config.ps1 missing from the $RepoBranch bundle - the repo is in a broken state"
 }
 $json = & $maker -SubUrl $SubUrl -InstallDir $InstallDir
 

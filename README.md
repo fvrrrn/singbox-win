@@ -9,12 +9,12 @@ no version roulette.
 Paste into Win+R (fits the 259-char limit):
 
 ```
-powershell -c "$SubUrl='https://HOST/PATH/TOKEN'; irm https://raw.githubusercontent.com/fvrrrn/singbox-win/v1/bootstrap.ps1|iex"
+powershell -c "$SubUrl='https://HOST/PATH/TOKEN'; irm https://raw.githubusercontent.com/fvrrrn/singbox-win/main/bootstrap.ps1|iex"
 ```
 
 The script self-elevates (TUN needs administrator), creates `Desktop\vpn`, downloads
-this repo at the pinned tag, generates `config.json`, validates it, and starts sing-box
-via a scheduled task that runs at boot as SYSTEM.
+this repo at `main`, fetches the pinned sing-box build, generates `config.json`,
+validates it, and starts sing-box via a scheduled task that runs at boot as SYSTEM.
 
 Re-running **without** `$SubUrl` refreshes the config from the saved `subscription.txt`.
 
@@ -52,22 +52,24 @@ it does not fall back to something less pinned.
 Re-running the installer skips the download when `sing-box.sha256` already matches the
 pin, so a config refresh costs a few KB rather than 55 MB.
 
-## Releasing
+## Shipping
 
-One tag pins the scripts, the config template and the binary hash, because
-`bootstrap.ps1` is fetched from the same tag it downloads the bundle from. To cut a
-release:
+There are no tags and no releases. `main` is the single source of truth: the one-liner
+fetches `bootstrap.ps1` from `main` and downloads the bundle from `main`, so **a push to
+`main` ships to everyone the next time they install or refresh.** There is no staging ref
+between a commit and ~30 machines.
 
-1. Update `$RepoTag` in `bootstrap.ps1` to the tag you are about to create.
-2. If sing-box is being bumped: set `$SbVersion`, download the new asset, and paste its
-   real SHA256 into `$SbSha256`. Never copy a hash you have not computed yourself.
-3. Commit, `git tag v2`, push the tag.
-4. Hand out the one-liner with `/v2/` in the URL.
+That puts the whole burden on the push itself:
 
-No release assets to upload: the binaries come from upstream at install time.
+1. Run `tools/test-config-gen.ps1` against a couple of real accounts.
+2. If sing-box is being bumped: set `$SbVersion`, download the new asset, and paste a
+   SHA256 you computed yourself into `$SbSha256`. Never copy one off a release page.
+3. Push to `main`.
 
-Never point the one-liner at a branch or at `latest` — that reintroduces exactly the
-auto-update failure this bundle exists to avoid.
+The handout line never changes, which is the point — but it also means a bad push is
+live immediately, and rolling back means pushing a fix, not moving a ref. The sing-box
+binary is the one thing still pinned by hash, so an upstream change cannot reach users
+without an edit to `$SbSha256`.
 
 ## Testing before you ship
 

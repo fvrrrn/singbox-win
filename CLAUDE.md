@@ -1,10 +1,10 @@
 # singbox-win
 
 Zero-GUI sing-box bundle for Windows, deployed to ~30 non-technical users by one
-pasteable Win+R line. `bootstrap.ps1` is fetched from a **pinned git tag**, downloads
-this repo at that same tag, injects per-user credentials parsed from a subscription URL,
-validates the generated config, and registers a scheduled task that runs at boot as
-SYSTEM.
+pasteable Win+R line. `bootstrap.ps1` is fetched from `main`, downloads this repo at
+`main`, fetches a hash-pinned sing-box from SagerNet, injects per-user credentials
+parsed from a subscription URL, validates the generated config, and registers a
+scheduled task that runs at boot as SYSTEM.
 
 See `README.md` for the full design rationale and release process.
 
@@ -18,9 +18,14 @@ See `README.md` for the full design rationale and release process.
   class of bug. Do not add Cyrillic or other non-ASCII strings.
 - **Use forward slashes in JSON paths.** Avoids backslash escaping; sing-box accepts them
   on Windows.
-- **Never point the installer at a branch or `latest`.** `$RepoTag` in `bootstrap.ps1` is
-  pinned deliberately — auto-update is the failure mode this project exists to avoid.
-  Cutting a release means bumping `$RepoTag`, then tagging.
+- **`main` is the only ref. No tags, no releases.** Users install from `main` and
+  re-installs pull `main` again, so anything pushed there ships immediately to everyone —
+  there is no staging ref between you and ~30 machines. Land work on `main` only when it
+  is ready to ship, and run `tools/test-config-gen.ps1` before pushing.
+- **The sing-box binary is still pinned, and must stay that way.** `$SbSha256` in
+  `bootstrap.ps1` is the one thing preventing an upstream change from reaching users
+  unreviewed. Bumping `$SbVersion` means downloading the asset and pasting a hash you
+  computed yourself — never one copied from a release page.
 - **Never commit credentials.** `config.json`, `subscription.txt`, `cache.db` are
   gitignored and generated per user at install time. Subscription URLs are credentials —
   keep them out of committed files, test fixtures, and logs.
