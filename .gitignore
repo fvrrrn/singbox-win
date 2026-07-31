@@ -1,0 +1,18 @@
+# Per-user secrets and runtime state - must never be committed
+config.json
+subscription.txt
+subs.txt
+cache.db
+
+# Binaries - fetched from SagerNet's release at install time and verified against
+# $SbSha256 in bootstrap.ps1. Keeping them untracked is what stops every release
+# from adding ~22 MB of unshrinkable blobs to history. Keep your local copies:
+# tools/test-config-gen.ps1 runs sing-box.exe from the repo root.
+sing-box.exe
+libcronet.dll
+sing-box.sha256
+
+# Build/runtime junk
+*.zip
+*.log
+log.txt

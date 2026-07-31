@@ -1,0 +1,102 @@
+{
+  "log": { "level": "warn", "timestamp": true },
+  "dns": {
+    "final": "doh-dns",
+    "rules": [
+      { "rule_set": ["refilter_domains"], "server": "doh-dns" }
+    ],
+    "servers": [
+      { "tag": "local-dns", "type": "local" },
+      { "server": "8.8.8.8", "tag": "doh-dns", "type": "https" }
+    ]
+  },
+  "experimental": {
+    "cache_file": { "enabled": true, "path": "C:/vpn/cache.db" }
+  },
+  "inbounds": [
+    {
+      "address": ["172.19.0.1/30"],
+      "auto_route": true,
+      "mtu": 9000,
+      "stack": "system",
+      "strict_route": true,
+      "tag": "tun-in",
+      "type": "tun"
+    }
+  ],
+  "outbounds": [
+    { "tag": "direct-out", "type": "direct" },
+    {
+      "password": "PLACEHOLDER",
+      "server": "example.invalid",
+      "server_port": 443,
+      "tag": "hy2",
+      "tls": { "enabled": true, "server_name": "example.invalid" },
+      "type": "hysteria2"
+    },
+    {
+      "idle_timeout": "30m",
+      "interval": "3m",
+      "outbounds": ["hy2", "vless-out"],
+      "tag": "hy2-out",
+      "tolerance": 50,
+      "type": "urltest",
+      "url": "https://www.gstatic.com/generate_204"
+    },
+    {
+      "domain_resolver": { "client_subnet": "1.1.1.1", "rewrite_ttl": 60, "server": "local-dns" },
+      "flow": "xtls-rprx-vision",
+      "server": "example.invalid",
+      "server_port": 443,
+      "tag": "vless-out",
+      "tls": {
+        "enabled": true,
+        "reality": { "enabled": true, "public_key": "AuMODOFfb9lAnjkLq3eAnSXa_f1IIw-O4AyTqKW9YkE", "short_id": "00" },
+        "server_name": "example.invalid",
+        "utls": { "enabled": true, "fingerprint": "randomized" }
+      },
+      "type": "vless",
+      "uuid": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "default_domain_resolver": { "rewrite_ttl": 60, "server": "local-dns" },
+    "final": "direct-out",
+    "rule_set": [
+      {
+        "download_detour": "direct-out",
+        "format": "binary",
+        "tag": "refilter_domains",
+        "type": "remote",
+        "url": "https://github.com/1andrevich/Re-filter-lists/releases/latest/download/ruleset-domain-refilter_domains.srs"
+      },
+      {
+        "download_detour": "direct-out",
+        "format": "binary",
+        "tag": "refilter_ipsum",
+        "type": "remote",
+        "url": "https://github.com/1andrevich/Re-filter-lists/releases/latest/download/ruleset-ip-refilter_ipsum.srs"
+      },
+      {
+        "rules": [
+          {
+            "domain": [
+              "kino.pub", "rezka.ag", "rutracker.org", "nixos.wiki", "wiki.nixos.org",
+              "search.nixos.org", "cdn2cdn.com", "qdrant.tech", "happ.su"
+            ]
+          }
+        ],
+        "tag": "custom",
+        "type": "inline"
+      }
+    ],
+    "rules": [
+      { "action": "sniff", "inbound": ["tun-in"] },
+      { "outbound": "hy2-out", "rule_set": ["refilter_domains", "refilter_ipsum"] },
+      { "outbound": "hy2-out", "rule_set": "custom" },
+      { "action": "hijack-dns", "protocol": "dns" },
+      { "ip_is_private": true, "outbound": "direct-out" }
+    ]
+  }
+}
