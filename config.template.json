@@ -3,7 +3,8 @@
   "dns": {
     "final": "doh-dns",
     "rules": [
-      { "rule_set": ["refilter_domains"], "server": "doh-dns" }
+      { "domain_suffix": [".ru", ".xn--p1ai", ".su"], "server": "local-dns" },
+      { "rule_set": ["geosite-category-ru"], "server": "local-dns" }
     ],
     "servers": [
       { "tag": "local-dns", "type": "local" },
@@ -62,21 +63,14 @@
   "route": {
     "auto_detect_interface": true,
     "default_domain_resolver": { "rewrite_ttl": 60, "server": "local-dns" },
-    "final": "direct-out",
+    "final": "hy2-out",
     "rule_set": [
       {
         "download_detour": "direct-out",
         "format": "binary",
-        "tag": "refilter_domains",
+        "tag": "geosite-category-ru",
         "type": "remote",
-        "url": "https://github.com/1andrevich/Re-filter-lists/releases/latest/download/ruleset-domain-refilter_domains.srs"
-      },
-      {
-        "download_detour": "direct-out",
-        "format": "binary",
-        "tag": "refilter_ipsum",
-        "type": "remote",
-        "url": "https://github.com/1andrevich/Re-filter-lists/releases/latest/download/ruleset-ip-refilter_ipsum.srs"
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ru.srs"
       },
       {
         "rules": [
@@ -93,10 +87,11 @@
     ],
     "rules": [
       { "action": "sniff", "inbound": ["tun-in"] },
-      { "outbound": "hy2-out", "rule_set": ["refilter_domains", "refilter_ipsum"] },
-      { "outbound": "hy2-out", "rule_set": "custom" },
       { "action": "hijack-dns", "protocol": "dns" },
-      { "ip_is_private": true, "outbound": "direct-out" }
+      { "ip_is_private": true, "outbound": "direct-out" },
+      { "outbound": "hy2-out", "rule_set": "custom" },
+      { "domain_suffix": [".ru", ".xn--p1ai", ".su"], "outbound": "direct-out" },
+      { "outbound": "direct-out", "rule_set": ["geosite-category-ru"] }
     ]
   }
 }

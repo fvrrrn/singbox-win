@@ -19,17 +19,26 @@ param(
     [Parameter(Mandatory, ValueFromPipeline)]
     [string[]] $SubUrl,
 
-    [string] $RepoRoot = (Split-Path $PSScriptRoot -Parent)
+    [string] $RepoRoot = (Split-Path $PSScriptRoot -Parent),
+
+    # The installed binary. bootstrap.ps1 put it there after checking it against
+    # $SbSha256, so it is the exact build users run - which is the one worth
+    # validating against. The repo tracks no binaries and never will.
+    [string] $Exe = (Join-Path ([Environment]::GetFolderPath('Desktop')) 'vpn\sing-box.exe')
 )
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$Exe = Join-Path $RepoRoot 'sing-box.exe'
-$Tpl = Join-Path $RepoRoot 'config.template.json'
-foreach ($p in @($Exe, $Tpl)) {
-    if (-not (Test-Path $p)) { throw "Not found: $p" }
+if (-not (Test-Path $Exe)) {
+    throw "sing-box.exe not found at $Exe - run bootstrap.ps1 to install it, or pass -Exe <path>."
 }
+
+$Tpl = Join-Path $RepoRoot 'config.template.json'
+if (-not (Test-Path $Tpl)) { throw "Not found: $Tpl" }
+
+Write-Host ("sing-box : {0}" -f $Exe) -ForegroundColor DarkGray
+Write-Host ("           {0}" -f ((& $Exe version 2>&1 | Select-Object -First 1))) -ForegroundColor DarkGray
 
 function ConvertFrom-ProxyUri([string]$uri) {
     if ($uri -notmatch '^(?<scheme>[a-z0-9]+)://(?<userinfo>[^@]*)@(?<host>[^:/?#]+):(?<port>\d+)/?\?(?<query>[^#]*)#?(?<tag>.*)$') {

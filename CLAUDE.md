@@ -29,9 +29,19 @@ See `README.md` for the full design rationale and release process.
 - **Never commit credentials.** `config.json`, `subscription.txt`, `cache.db` are
   gitignored and generated per user at install time. Subscription URLs are credentials —
   keep them out of committed files, test fixtures, and logs.
-- **Config is an allowlist.** `route.final` is `direct-out`: direct by default, only
-  Re-filter matches and the inline `custom` list are tunneled. Do not "fix" this into a
-  proxy-everything config.
+- **Config is a blocklist.** `route.final` is `hy2-out`: tunneled by default, and only
+  private IPs, `.ru`/`.xn--p1ai`/`.su`, and `geosite-category-ru` go direct. It used to be
+  the other way round; the allowlist lost because the blocked set grew faster than anyone
+  wanted to maintain it. Two consequences to keep in mind when editing:
+  - Every user's full traffic crosses the VPS, so an outage breaks everything rather than
+    a handful of sites.
+  - Russian services on `.com` or third-party CDNs fall through to the tunnel and will be
+    reported as broken. Fix those by widening the direct rules, not by touching `final`.
+- **`custom` force-tunnels and must stay above the direct rules.** It is the only way to
+  send a Russian domain through the VPN. Reordering `route.rules` silently disables it.
+- **`.ru` DNS goes to `local-dns`, not `doh-dns`.** Resolving Russian names through
+  8.8.8.8 returns CDN nodes picked for Google's resolver. Sites still load, just slowly,
+  which gets reported as "the VPN broke my internet".
 
 ## Testing
 

@@ -82,10 +82,22 @@ no install. Run it against a few real accounts after any panel change.
 
 ## Config design
 
-Ported from a known-good Linux config. It is an **allowlist**: `route.final` is
-`direct-out`, so traffic goes direct by default and only Re-filter list matches plus the
-inline `custom` domain list are tunneled. Outbound selection is a `urltest` group
-preferring Hysteria2 with VLESS-Reality as fallback.
+Ported from a known-good Linux config. It is a **blocklist**: `route.final` is `hy2-out`,
+so traffic is tunneled by default and only three things go direct — private IPs, the
+`.ru`/`.xn--p1ai`/`.su` suffixes, and `geosite-category-ru`. Outbound selection is a
+`urltest` group preferring Hysteria2 with VLESS-Reality as fallback.
+
+It started as an allowlist driven by the Re-filter lists. That inverted once the blocked
+set outgrew the effort of tracking it. The trade is real: all traffic now crosses the VPS,
+an outage takes out everything instead of a few sites, and Russian services hosted on
+`.com` or third-party CDNs fall through to the tunnel. Widen the direct rules when that
+happens; don't touch `final`.
+
+Two ordering constraints that aren't obvious from reading the JSON. The inline `custom`
+list force-tunnels and sits **above** the `.ru` rules, so it can override them — move it
+and it stops working. And `.ru` DNS goes to `local-dns` rather than the DoH server,
+because resolving Russian names through 8.8.8.8 hands back CDN nodes chosen for Google's
+resolver.
 
 Windows-specific deviations from the Linux original:
 
@@ -94,8 +106,10 @@ Windows-specific deviations from the Linux original:
 - `cache_file.path` is absolute — relative paths resolve against CWD, which is wrong
   under Task Scheduler.
 - Rule-sets stay `remote`. `initial_path` (a bundled snapshot fallback) is a sing-box
-  1.14 field and is rejected by 1.13.15. Remote is safe here anyway: `final` is direct,
-  so the download works before any tunnel exists, and `cache_file` covers later starts.
+  1.14 field and is rejected by 1.13.15. What keeps remote safe is `download_detour:
+  direct-out` on the rule-set itself, so the fetch never depends on a tunnel that isn't
+  up yet; `cache_file` covers later starts. This mattered less when `final` was direct.
+  Now it is the only thing preventing a first-run deadlock.
 
 ## Gotchas worth not rediscovering
 
