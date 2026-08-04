@@ -42,6 +42,12 @@ See `README.md` for the full design rationale and release process.
 - **`.ru` DNS goes to `local-dns`, not `doh-dns`.** Resolving Russian names through
   8.8.8.8 returns CDN nodes picked for Google's resolver. Sites still load, just slowly,
   which gets reported as "the VPN broke my internet".
+- **Stopping the VPN means `Disable-ScheduledTask`, not `Stop-ScheduledTask`.** The task
+  carries `-RestartCount 3 -RestartInterval 1m`, so killing `sing-box.exe` looks like a
+  failed action and it restarts within a minute; stopping without disabling leaves the
+  boot trigger armed. `vpn-control.ps1` does both in the right order and waits on the
+  `172.19.0.*` address to confirm routing actually changed. Do not "simplify" it into a
+  Stop-only script.
 
 ## Testing
 

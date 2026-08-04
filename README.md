@@ -18,15 +18,32 @@ validates it, and starts sing-box via a scheduled task that runs at boot as SYST
 
 Re-running **without** `$SubUrl` refreshes the config from the saved `subscription.txt`.
 
-Uninstall: run `uninstall.ps1` from the install folder.
+## Turning it off
+
+Double-click `vpn-stop.cmd` in the install folder, `vpn-start.cmd` to bring it back.
+Both prompt for administrator.
+
+Stopping has to **disable** the scheduled task, not just stop it. The task is registered
+`-RestartCount 3 -RestartInterval 1m`, so killing `sing-box.exe` on its own looks like a
+failed action and Task Scheduler restarts it inside a minute. Stopping without disabling
+also leaves the boot trigger armed, so it comes back at the next reboot. Tell users to
+use the shortcut rather than Task Manager.
+
+This matters more than it used to. Traffic is tunneled by default now, so a bad night on
+the VPS looks to a user like the internet being down, and they need a way out that isn't
+a phone call.
+
+Uninstall (removes everything, including the saved subscription): run `uninstall.ps1`.
 
 ## Layout
 
 | File | Purpose |
 |---|---|
 | `config.template.json` | Config with placeholder credentials; `make-config.ps1` fills them in. |
-| `bootstrap.ps1` | Installer. Served from the tagged raw URL. |
+| `bootstrap.ps1` | Installer. Served raw from `main`. |
 | `make-config.ps1` | Subscription URL in, config JSON out on stdout. Writes nothing. |
+| `vpn-stop.cmd` / `vpn-start.cmd` | What users double-click. Thin wrappers. |
+| `vpn-control.ps1` | Disables/enables the task, waits for TUN to actually go down or up. |
 | `uninstall.ps1` | Stops the task, unregisters it, deletes the folder. |
 | `tools/test-config-gen.ps1` | Validates generated configs without touching the system. |
 
