@@ -17,7 +17,9 @@ $RepoName   = 'singbox-win'
 # when a user runs this is what they get, including on a config refresh. Land
 # changes on main only when they are ready to ship.
 $RepoBranch = 'main'
-$InstallDir = Join-Path ([Environment]::GetFolderPath('Desktop')) 'vpn'
+if (-not (Test-Path variable:InstallDir)) {
+    $InstallDir = Join-Path ([Environment]::GetFolderPath('Desktop')) 'vpn'
+}
 $TaskName   = 'singbox-vpn'
 
 # ---- sing-box binaries -------------------------------------
@@ -44,7 +46,11 @@ function Test-Admin {
 if (-not (Test-Admin)) {
     Write-Host 'Administrator rights required. Requesting elevation...' -ForegroundColor Yellow
     $tmp = Join-Path $env:TEMP 'singbox-bootstrap.ps1'
-    $prefix = if ($SubUrl) { "`$SubUrl = @'`n$SubUrl`n'@`n" } else { '' }
+    # Capture the real user's Desktop now; after RunAs elevation GetFolderPath returns
+    # the admin account's Desktop instead of this user's.
+    $userDesktop = [Environment]::GetFolderPath('Desktop')
+    $prefix  = "`$InstallDir = Join-Path '$userDesktop' 'vpn'`n"
+    $prefix += if ($SubUrl) { "`$SubUrl = @'`n$SubUrl`n'@`n" } else { '' }
     $body = if ($PSCommandPath -and (Test-Path $PSCommandPath)) {
         Get-Content $PSCommandPath -Raw
     } else {
