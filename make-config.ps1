@@ -36,7 +36,11 @@ param(
 
     [string] $InstallDir = (Join-Path ([Environment]::GetFolderPath('Desktop')) 'vpn'),
 
-    [string] $Template = (Join-Path $PSScriptRoot 'config.template.json')
+    [string] $Template = (Join-Path $PSScriptRoot 'config.template.json'),
+
+    # Pre-fetched subscription content. When supplied, SubUrl is saved to
+    # subscription.txt but the network fetch is skipped entirely.
+    [string] $SubContent
 )
 
 begin {
@@ -68,8 +72,12 @@ begin {
 process {
     if (-not (Test-Path $Template)) { throw "Template not found: $Template" }
 
-    $raw = (Invoke-WebRequest -Uri $SubUrl -UseBasicParsing -UserAgent 'sing-box' -TimeoutSec 30).Content
-    if ($raw -is [byte[]]) { $raw = [Text.Encoding]::UTF8.GetString($raw) }
+    if ($SubContent) {
+        $raw = $SubContent
+    } else {
+        $raw = (Invoke-WebRequest -Uri $SubUrl -UseBasicParsing -UserAgent 'sing-box' -TimeoutSec 30).Content
+        if ($raw -is [byte[]]) { $raw = [Text.Encoding]::UTF8.GetString($raw) }
+    }
 
     $compact = ($raw -replace '\s', '')
     try {
