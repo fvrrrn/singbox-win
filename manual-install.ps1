@@ -1,8 +1,10 @@
 #Requires -Version 5.1
 # Run this from the vpn folder. It will request elevation if needed.
+# If config.json is already present it skips config generation and goes
+# straight to validate + register the scheduled task.
 
 $ErrorActionPreference = 'Stop'
-$TaskName   = 'singbox-vpn'
+$TaskName = 'singbox-vpn'
 
 function Write-Step { param($m) Write-Host "`n[*] $m" -ForegroundColor Cyan }
 function Write-Ok   { param($m) Write-Host "    [OK] $m" -ForegroundColor Green }
@@ -13,7 +15,6 @@ function Test-Admin {
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# Self-elevate, keeping the install folder location
 if (-not (Test-Admin)) {
     $self = $MyInvocation.MyCommand.Path
     Start-Process powershell -Verb RunAs `
@@ -23,30 +24,32 @@ if (-not (Test-Admin)) {
 
 try {
     $InstallDir = $PSScriptRoot
+    $cfgPath    = Join-Path $InstallDir 'config.json'
+    $Exe        = Join-Path $InstallDir 'sing-box.exe'
 
-    # ---- Subscription URL ---------------------------------------------------
-    $SubFile = Join-Path $InstallDir 'subscription.txt'
-    if (Test-Path $SubFile) {
-        $SubUrl = (Get-Content $SubFile -Raw).Trim()
-        Write-Ok "Using saved subscription: $SubUrl"
+    # ---- Generate config.json (skipped if already present) ------------------
+    if (Test-Path $cfgPath) {
+        Write-Ok 'config.json already present - skipping generation'
     } else {
-        do { $SubUrl = (Read-Host 'Subscription URL').Trim() }
-        until ($SubUrl -match '^https?://')
-    }
+        $SubFile = Join-Path $InstallDir 'subscription.txt'
+        if (Test-Path $SubFile) {
+            $SubUrl = (Get-Content $SubFile -Raw).Trim()
+            Write-Ok "Using saved subscription: $SubUrl"
+        } else {
+            do { $SubUrl = (Read-Host 'Subscription URL').Trim() }
+            until ($SubUrl -match '^https?://')
+        }
 
-    # ---- Generate config.json -----------------------------------------------
-    Write-Step 'Building configuration...'
-    $maker = Join-Path $InstallDir 'make-config.ps1'
-    $json  = & $maker -SubUrl $SubUrl -InstallDir $InstallDir
-    $noBom = New-Object Text.UTF8Encoding $false
-    [IO.File]::WriteAllText((Join-Path $InstallDir 'config.json'), $json, $noBom)
-    [IO.File]::WriteAllText($SubFile, $SubUrl, $noBom)
-    Write-Ok 'config.json written'
+        Write-Step 'Building configuration...'
+        $json  = & (Join-Path $InstallDir 'make-config.ps1') -SubUrl $SubUrl -InstallDir $InstallDir
+        $noBom = New-Object Text.UTF8Encoding $false
+        [IO.File]::WriteAllText($cfgPath, $json, $noBom)
+        [IO.File]::WriteAllText($SubFile, $SubUrl, $noBom)
+        Write-Ok 'config.json written'
+    }
 
     # ---- Validate -----------------------------------------------------------
     Write-Step 'Validating configuration...'
-    $Exe      = Join-Path $InstallDir 'sing-box.exe'
-    $cfgPath  = Join-Path $InstallDir 'config.json'
     $checkOut = & $Exe check -c $cfgPath 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Fail 'Configuration is invalid:'
